@@ -8,6 +8,7 @@ class massTable {
 public:
     std::map<char, long double> masses;
     const long double waterMass = 18.010565;
+    const long double ammoniaMass = 17.026549;
 
     massTable() {
         masses['A'] = 71.03711;
@@ -42,10 +43,13 @@ struct TheorySpectra {
     std::string sequence;
     std::vector<std::pair<std::string, long double>> prefixes{};
     std::vector<std::pair<std::string, long double>> suffixes{};
+    std::map<std::string, std::string> linkedPairs;
 
     TheorySpectra(std::string sequence, std::vector<std::pair<std::string, long double>> prefixes,
-                  std::vector<std::pair<std::string, long double>> suffixes) :
-            sequence(std::move(sequence)), prefixes(prefixes), suffixes(suffixes) {};
+                  std::vector<std::pair<std::string, long double>> suffixes,
+                  std::map<std::string, std::string> linkedPairs) :
+            sequence(std::move(sequence)), prefixes(prefixes), suffixes(suffixes),
+            linkedPairs(std::move(linkedPairs)) {};
 };
 
 TheorySpectra generateMasses(const std::string &peptide);

@@ -20,37 +20,74 @@ int main() {
         os << sequence << "\n";
         TheorySpectra ts = generateMasses(sequence);
         for (auto &spectra: elem.second) {
-            int cnt = 0;
             os << "\n" << spectra.scanId << "\t" << spectra.eValue << "\t" << (spectra.aType == HCD ? "HCD" : "CID");
-            long double sum = 0;
-            long double covered = 0;
-            for (auto &mass: parser.spectras[spectra.scanId].massesAndIntensities)
-                sum += mass.second;
+            int covered = 0;
+            map<string, bool> isCovered;
             for (auto &prefix:ts.prefixes) {
                 string name = prefix.first;
                 for (auto &mass: parser.spectras[spectra.scanId].massesAndIntensities) {
                     if (abs(mass.first - prefix.second) <= epsilon) {
-                        cnt++;
-                        covered += mass.second;
+                        if (!isCovered[prefix.first]) {
+                            covered++;
+                            isCovered[prefix.first] = true;
+                            isCovered[ts.linkedPairs[prefix.first]] = true;
+                        }
                         os << "\n" << mass.first << "\t" << mass.second << "\t" << name << "\tprefix";
                     }
+
+                    if (abs(mass.first - prefix.second + t.waterMass) <= epsilon) {
+                        if (!isCovered[prefix.first]) {
+                            covered++;
+                            isCovered[prefix.first] = true;
+                            isCovered[ts.linkedPairs[prefix.first]] = true;
+                        }
+                        os << "\n" << mass.first << "\t" << mass.second << "\t" << name << "\tprefix\twater loss";
+                    }
+
+                    if (abs(mass.first - prefix.second + t.ammoniaMass) <= epsilon) {
+                        if (!isCovered[prefix.first]) {
+                            covered++;
+                            isCovered[prefix.first] = true;
+                            isCovered[ts.linkedPairs[prefix.first]] = true;
+                        }
+                        os << "\n" << mass.first << "\t" << mass.second << "\t" << name << "\tprefix\tammonia loss";
+                    }
+
                 }
             }
             for (auto &prefix:ts.suffixes) {
                 string name = prefix.first;
                 for (auto &mass: parser.spectras[spectra.scanId].massesAndIntensities) {
                     if (abs(mass.first - prefix.second) <= epsilon) {
-                        cnt++;
-                        covered += mass.second;
+                        if (!isCovered[prefix.first]) {
+                            covered++;
+                            isCovered[prefix.first] = true;
+                            isCovered[ts.linkedPairs[prefix.first]] = true;
+                        }
                         os << "\n" << mass.first << "\t" << mass.second << "\t" << name << "\tsuffix";
+                    }
+
+                    if (abs(mass.first - prefix.second + t.waterMass) <= epsilon) {
+                        if (!isCovered[prefix.first]) {
+                            covered++;
+                            isCovered[prefix.first] = true;
+                            isCovered[ts.linkedPairs[prefix.first]] = true;
+                        }
+                        os << "\n" << mass.first << "\t" << mass.second << "\t" << name << "\tsuffix\twater loss";
+                    }
+
+                    if (abs(mass.first - prefix.second + t.ammoniaMass) <= epsilon) {
+                        if (!isCovered[prefix.first]) {
+                            covered++;
+                            isCovered[prefix.first] = true;
+                            isCovered[ts.linkedPairs[prefix.first]] = true;
+                        }
+                        os << "\n" << mass.first << "\t" << mass.second << "\t" << name << "\tsuffix\tammonia loss";
                     }
                 }
             }
-            os << "\n cover " << (double) cnt / (parser.spectras[spectra.scanId].massesAndIntensities.size()) * 100
-               << " percent -- by picks count";
-            long double res = covered / sum * 100;
-            os << "\n cover " << (double) res << " percent -- by intensity";
-            os << "\n";
+
+            os << "\n covered " << (double) covered / (ts.sequence.length() - 1) * 100 << "% of peptide links\n\n";
         }
     }
     os.close();
