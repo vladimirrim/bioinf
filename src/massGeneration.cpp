@@ -4,25 +4,25 @@
 
 using namespace std;
 
-TheorySpectra generateMasses(const string &peptide) {
+TheorySpectra generateMasses(const string &peptide, double additionalMass) {
     string prefix;
     massTable table;
-    long double mass = 1.007;
-    vector<pair<string, string>> pairs(peptide.length());
+    long double mass = additionalMass;
+    int sequenceLength = 1;
     vector<pair<string, long double>> prefixes;
     map<string, string> linkedPairs;
     for (int i = 0; i < peptide.length() - 1; i++) {
+        sequenceLength++;
         if (peptide[i] == 'C')
             mass += 57.021;
         mass += table[peptide[i]];
         prefix += peptide[i];
         prefixes.emplace_back(prefix, mass);
-        pairs[peptide.length() - 1 - i].first = prefix;
         if (peptide[i] == 'C')
             i += 7;
     }
     string suffix;
-    mass = table.waterMass + 1.007;
+    mass = table.waterMass + additionalMass;
     vector<pair<string, long double>> suffixes;
     for (int i = peptide.length() - 1; i > 0; i--) {
         if (peptide[i] == '1') {
@@ -34,12 +34,11 @@ TheorySpectra generateMasses(const string &peptide) {
             mass += table[peptide[i]];
             suffix.insert(0, 1, peptide[i]);
         }
-        pairs[i].second = suffix;
         suffixes.emplace_back(suffix, mass);
     }
-    for (int i = 0; i < peptide.length(); i++) {
-        linkedPairs[pairs[i].first] = pairs[i].second;
-        linkedPairs[pairs[i].second] = pairs[i].first;
+    for (int i = 0; i < sequenceLength - 1; i++) {
+        linkedPairs[suffixes[i].first] = prefixes[sequenceLength - i - 2].first;
+        linkedPairs[prefixes[sequenceLength - i - 2].first] = suffixes[i].first;
     }
-    return TheorySpectra(peptide, prefixes, suffixes, linkedPairs);
+    return TheorySpectra(sequenceLength, peptide, prefixes, suffixes, linkedPairs);
 }
