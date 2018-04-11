@@ -35,5 +35,6 @@ void xmlParser::parseXML(string filename) {
             double intensity = stod(val);
             spectra.massesAndIntensities.emplace_back(mass, intensity);
         }
+        getline(file, str);
     }
 }

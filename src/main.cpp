@@ -10,88 +10,7 @@ using namespace std;
 
 const massTable MASS_TABLE;
 
-void printAnnotatedPicks(const tsvParser &p, xmlParser &parser) {
-    ofstream os("results.txt");
-    double epsilon = 0.02;
-    for (auto &elem: p.results) {
-        string sequence = elem.first;
-        os << sequence << "\n";
-        TheorySpectra ts = generateMasses(sequence);
-        for (auto &spectra: elem.second) {
-            os << "\n" << spectra.scanId << "\t" << spectra.eValue << "\t" << (spectra.aType == HCD ? "HCD" : "CID");
-            int covered = 0;
-            map<string, bool> isCovered;
-            for (auto &prefix:ts.prefixes) {
-                string name = prefix.first;
-                for (auto &mass: parser.spectras[spectra.scanId].massesAndIntensities) {
-                    if (abs(mass.first - prefix.second) <= epsilon) {
-                        if (!isCovered[prefix.first]) {
-                            covered++;
-                            isCovered[prefix.first] = true;
-                            isCovered[ts.linkedPairs[prefix.first]] = true;
-                        }
-                        os << "\n" << mass.first << "\t" << mass.second << "\t" << name << "\tprefix";
-                    }
-
-                    if (abs(mass.first - prefix.second + MASS_TABLE.waterMass) <= epsilon) {
-                        if (!isCovered[prefix.first]) {
-                            covered++;
-                            isCovered[prefix.first] = true;
-                            isCovered[ts.linkedPairs[prefix.first]] = true;
-                        }
-                        os << "\n" << mass.first << "\t" << mass.second << "\t" << name << "\tprefix\twater loss";
-                    }
-
-                    if (abs(mass.first - prefix.second + MASS_TABLE.ammoniaMass) <= epsilon) {
-                        if (!isCovered[prefix.first]) {
-                            covered++;
-                            isCovered[prefix.first] = true;
-                            isCovered[ts.linkedPairs[prefix.first]] = true;
-                        }
-                        os << "\n" << mass.first << "\t" << mass.second << "\t" << name << "\tprefix\tammonia loss";
-                    }
-
-                }
-            }
-            for (auto &prefix:ts.suffixes) {
-                string name = prefix.first;
-                for (auto &mass: parser.spectras[spectra.scanId].massesAndIntensities) {
-                    if (abs(mass.first - prefix.second) <= epsilon) {
-                        if (!isCovered[prefix.first]) {
-                            covered++;
-                            isCovered[prefix.first] = true;
-                            isCovered[ts.linkedPairs[prefix.first]] = true;
-                        }
-                        os << "\n" << mass.first << "\t" << mass.second << "\t" << name << "\tsuffix";
-                    }
-
-                    if (abs(mass.first - prefix.second + MASS_TABLE.waterMass) <= epsilon) {
-                        if (!isCovered[prefix.first]) {
-                            covered++;
-                            isCovered[prefix.first] = true;
-                            isCovered[ts.linkedPairs[prefix.first]] = true;
-                        }
-                        os << "\n" << mass.first << "\t" << mass.second << "\t" << name << "\tsuffix\twater loss";
-                    }
-
-                    if (abs(mass.first - prefix.second + MASS_TABLE.ammoniaMass) <= epsilon) {
-                        if (!isCovered[prefix.first]) {
-                            covered++;
-                            isCovered[prefix.first] = true;
-                            isCovered[ts.linkedPairs[prefix.first]] = true;
-                        }
-                        os << "\n" << mass.first << "\t" << mass.second << "\t" << name << "\tsuffix\tammonia loss";
-                    }
-                }
-            }
-
-            os << "\n covered " << (double) covered / (ts.sequenceLength - 1) * 100 << "% of peptide links\n\n";
-        }
-    }
-    os.close();
-}
-
-void showAnnotatedPicks(ofstream &os, TheorySpectra &ts, MSResult &spectra, xmlParser &parser) {
+void showAnnotatedPicks(ofstream &os, TheorySpectra &ts, const MSResult &spectra, xmlParser &parser) {
     os << "\n" << spectra.scanId << "\t" << spectra.eValue << "\t" << (spectra.aType == HCD ? "HCD" : "CID");
     int covered = 0;
     map<string, bool> isCovered;
@@ -161,6 +80,20 @@ void showAnnotatedPicks(ofstream &os, TheorySpectra &ts, MSResult &spectra, xmlP
     }
 
     os << "\n covered " << (double) covered / (ts.sequenceLength - 1) * 100 << "% of peptide links\n\n";
+}
+
+
+void printAnnotatedPicks(const tsvParser &p, xmlParser &parser) {
+    ofstream os("results.txt");
+    for (auto &elem: p.results) {
+        string sequence = elem.first;
+        os << sequence << "\n";
+        TheorySpectra ts = generateMasses(sequence);
+        for (auto &spectra: elem.second) {
+            showAnnotatedPicks(os, ts, spectra, parser);
+        }
+    }
+    os.close();
 }
 
 double calculateAnnotatedPicks(const MSResult &spectra, const vector<MSResult> &elem, TheorySpectra &ts,
@@ -260,9 +193,10 @@ void printNeutralAndPlusHDifference(const tsvParser &p, xmlParser &parser, const
 
 int main() {
     xmlParser parser;
-    parser.parseXML("../120706O2c1_LZ-MvD-0297-MabCampth-trypsin_007.mzXML.good.msalign");
+    parser.parseXML("120706O2c1_LZ-MvD-0297-MabCampth-trypsin_007_msdeconv.msalign");
     tsvParser p;
     p.parseTSV("../120706O2c1_LZ-MvD-0297-MabCampth-trypsin_007.tsv");
+    printAnnotatedPicks(p, parser);
     printNeutralAndPlusHDifference(p, parser, MASS_TABLE);
     return 0;
 }
