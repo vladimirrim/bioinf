@@ -43,15 +43,16 @@ public:
 struct TheorySpectra {
     std::string sequence;
     int sequenceLength;
+    double globalMass;
     std::vector<std::pair<std::string, long double>> prefixes{};
     std::vector<std::pair<std::string, long double>> suffixes{};
     std::map<std::string, std::string> linkedPairs;
 
     TheorySpectra(int sequenceLength, std::string sequence, std::vector<std::pair<std::string, long double>> prefixes,
                   std::vector<std::pair<std::string, long double>> suffixes,
-                  std::map<std::string, std::string> linkedPairs) :
+                  std::map<std::string, std::string> linkedPairs, double globalMass) :
             sequence(std::move(sequence)), prefixes(prefixes), suffixes(suffixes),
-            linkedPairs(std::move(linkedPairs)), sequenceLength(sequenceLength) {};
+            linkedPairs(std::move(linkedPairs)), sequenceLength(sequenceLength), globalMass(globalMass) {};
 };
 
 TheorySpectra generateMasses(const std::string &peptide, double additionalMass = 0);

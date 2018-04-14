@@ -21,6 +21,7 @@ TheorySpectra generateMasses(const string &peptide, double additionalMass) {
         if (peptide[i] == 'C')
             i += 7;
     }
+    double globalMass = mass + table[peptide[peptide.length() - 1]];
     string suffix;
     mass = table.waterMass + additionalMass;
     vector<pair<string, long double>> suffixes;
@@ -40,5 +41,5 @@ TheorySpectra generateMasses(const string &peptide, double additionalMass) {
         linkedPairs[suffixes[i].first] = prefixes[sequenceLength - i - 2].first;
         linkedPairs[prefixes[sequenceLength - i - 2].first] = suffixes[i].first;
     }
-    return TheorySpectra(sequenceLength, peptide, prefixes, suffixes, linkedPairs);
+    return TheorySpectra(sequenceLength, peptide, prefixes, suffixes, linkedPairs, globalMass);
 }
