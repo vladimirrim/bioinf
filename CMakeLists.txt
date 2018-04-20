@@ -3,4 +3,4 @@ project(bioinf)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(bioinf src/main.cpp include/xmlParser.h src/xmlParser.cpp include/tsvParser.h include/massGeneration.h src/massGeneration.cpp src/tsvParser.cpp)
+add_executable(bioinf src/main.cpp include/xmlParser.h src/xmlParser.cpp include/tsvParser.h include/massGeneration.h src/massGeneration.cpp src/tsvParser.cpp include/spectrumAnalyzer.h src/spectrumAnalyzer.cpp)
