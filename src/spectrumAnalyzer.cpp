@@ -11,148 +11,27 @@ pair<double, double> calculateError(double theoryMass, double mass) {
     return {absError, relError};
 }
 
+
 const massTable SpectrumAnalyzer::MASS_TABLE = massTable();
+double SpectrumAnalyzer::averageRelError = 0, SpectrumAnalyzer::averageAbsError = 0,
+        SpectrumAnalyzer::maxRelError = 0, SpectrumAnalyzer::maxAbsError = 0,
+        SpectrumAnalyzer::minRelError = 1, SpectrumAnalyzer::minAbsError = 1;
+
+pair<double, double> SpectrumAnalyzer::recalculateError(double theoryMass, double mass) {
+    pair<double, double> errors = calculateError(theoryMass, mass);
+    averageAbsError += errors.first;
+    averageRelError += errors.second;
+    maxAbsError = max(maxAbsError, errors.first);
+    maxRelError = max(maxRelError, errors.second);
+    minAbsError = min(minAbsError, errors.first);
+    minRelError = min(minRelError, errors.second);
+    return errors;
+}
+
 
 void
 SpectrumAnalyzer::showAnnotatedPicks(std::ofstream &os, TheorySpectra &ts, const MSResult &spectra, xmlParser &parser,
                                      double epsilon) {
-    os << "\n" << spectra.scanId << "\t" << spectra.eValue << "\t" << (spectra.aType == HCD ? "HCD" : "CID");
-    int covered = 0;
-    map<string, bool> isCovered;
-    int annotatedCnt = 0;
-    double averageRelError = 0, averageAbsError = 0, maxRelError = 0, maxAbsError = 0, minRelError = 1, minAbsError = 1;
-    for (auto &prefix:ts.prefixes) {
-        string name = prefix.first;
-        for (auto &mass: parser.spectras[spectra.scanId].massesAndIntensities) {
-            if (abs(mass.first - prefix.second) <= epsilon) {
-                annotatedCnt++;
-                if (!isCovered[prefix.first]) {
-                    covered++;
-                    isCovered[prefix.first] = true;
-                    isCovered[ts.linkedPairs[prefix.first]] = true;
-                }
-                pair<double, double> errors = calculateError(prefix.second, mass.first);
-                averageAbsError += errors.first;
-                averageRelError += errors.second;
-                maxAbsError = max(maxAbsError, errors.first);
-                maxRelError = max(maxRelError, errors.second);
-                minAbsError = min(minAbsError, errors.first);
-                minRelError = min(minRelError, errors.second);
-                os << "\n" << mass.first << "\t" << mass.second << "\t" << name << "\tprefix\t\tabsolute mass error: "
-                   << errors.first <<
-                   "\trelative mass error: " << errors.second << "%";
-            }
-
-            if (abs(mass.first - prefix.second + MASS_TABLE.waterMass) <= epsilon) {
-                annotatedCnt++;
-                if (!isCovered[prefix.first]) {
-                    covered++;
-                    isCovered[prefix.first] = true;
-                    isCovered[ts.linkedPairs[prefix.first]] = true;
-                }
-                pair<double, double> errors = calculateError(prefix.second - MASS_TABLE.waterMass, mass.first);
-                averageAbsError += errors.first;
-                averageRelError += errors.second;
-                maxAbsError = max(maxAbsError, errors.first);
-                maxRelError = max(maxRelError, errors.second);
-                minAbsError = min(minAbsError, errors.first);
-                minRelError = min(minRelError, errors.second);
-                os << "\n" << mass.first << "\t" << mass.second << "\t" << name
-                   << "\tprefix\twater loss\tabsolute mass error: " << errors.first <<
-                   "\trelative mass error: " << errors.second << "%";
-            }
-
-            if (abs(mass.first - prefix.second + MASS_TABLE.ammoniaMass) <= epsilon) {
-                annotatedCnt++;
-                if (!isCovered[prefix.first]) {
-                    covered++;
-                    isCovered[prefix.first] = true;
-                    isCovered[ts.linkedPairs[prefix.first]] = true;
-                }
-                pair<double, double> errors = calculateError(prefix.second - MASS_TABLE.ammoniaMass, mass.first);
-                averageAbsError += errors.first;
-                averageRelError += errors.second;
-                maxAbsError = max(maxAbsError, errors.first);
-                maxRelError = max(maxRelError, errors.second);
-                minAbsError = min(minAbsError, errors.first);
-                minRelError = min(minRelError, errors.second);
-                os << "\n" << mass.first << "\t" << mass.second << "\t" << name
-                   << "\tprefix\tammonia loss\tabsolute mass error: " << errors.first <<
-                   "\trelative mass error: " << errors.second << "%";
-            }
-
-        }
-    }
-    for (auto &prefix:ts.suffixes) {
-        string name = prefix.first;
-        for (auto &mass: parser.spectras[spectra.scanId].massesAndIntensities) {
-            if (abs(mass.first - prefix.second) <= epsilon) {
-                annotatedCnt++;
-                if (!isCovered[prefix.first]) {
-                    covered++;
-                    isCovered[prefix.first] = true;
-                    isCovered[ts.linkedPairs[prefix.first]] = true;
-                }
-                pair<double, double> errors = calculateError(prefix.second, mass.first);
-                averageAbsError += errors.first;
-                averageRelError += errors.second;
-                maxAbsError = max(maxAbsError, errors.first);
-                maxRelError = max(maxRelError, errors.second);
-                minAbsError = min(minAbsError, errors.first);
-                minRelError = min(minRelError, errors.second);
-                os << "\n" << mass.first << "\t" << mass.second << "\t" << name << "\tsuffix\t\tabsolute mass error: "
-                   << errors.first <<
-                   "\trelative mass error: " << errors.second << "%";
-            }
-
-            if (abs(mass.first - prefix.second + MASS_TABLE.waterMass) <= epsilon) {
-                annotatedCnt++;
-                if (!isCovered[prefix.first]) {
-                    covered++;
-                    isCovered[prefix.first] = true;
-                    isCovered[ts.linkedPairs[prefix.first]] = true;
-                }
-                pair<double, double> errors = calculateError(prefix.second - MASS_TABLE.waterMass, mass.first);
-                averageAbsError += errors.first;
-                averageRelError += errors.second;
-                maxAbsError = max(maxAbsError, errors.first);
-                maxRelError = max(maxRelError, errors.second);
-                minAbsError = min(minAbsError, errors.first);
-                minRelError = min(minRelError, errors.second);
-                os << "\n" << mass.first << "\t" << mass.second << "\t" << name
-                   << "\tsuffix\twater loss\tabsolute mass error: " << errors.first <<
-                   "\trelative mass error: " << errors.second << "%";
-            }
-
-            if (abs(mass.first - prefix.second + MASS_TABLE.ammoniaMass) <= epsilon) {
-                annotatedCnt++;
-                if (!isCovered[prefix.first]) {
-                    covered++;
-                    isCovered[prefix.first] = true;
-                    isCovered[ts.linkedPairs[prefix.first]] = true;
-                }
-                pair<double, double> errors = calculateError(prefix.second - MASS_TABLE.ammoniaMass, mass.first);
-                averageAbsError += errors.first;
-                averageRelError += errors.second;
-                maxAbsError = max(maxAbsError, errors.first);
-                maxRelError = max(maxRelError, errors.second);
-                minAbsError = min(minAbsError, errors.first);
-                minRelError = min(minRelError, errors.second);
-                os << "\n" << mass.first << "\t" << mass.second << "\t" << name
-                   << "\tsuffix\tammonia loss\tabsolute mass error: " << errors.first <<
-                   "\trelative mass error: " << errors.second << "%";
-            }
-        }
-    }
-    if (annotatedCnt) {
-        averageAbsError /= annotatedCnt;
-        averageRelError /= annotatedCnt;
-    }
-    os << "\n covered " << (double) covered / (ts.sequenceLength - 1) * 100
-       << "% of peptide links\ntotal mass: " << ts.globalMass << "\naverage absolute error: " << averageAbsError
-       << "\taverage relative error: " << averageRelError << "%\nmax absolute error: " << maxAbsError
-       << "\t min absolute error: " << minAbsError <<
-       "\nmax relative error: " << maxRelError << "%\t min relative error: " << minRelError << "%\n\n";
 }
 
 void SpectrumAnalyzer::printAnnotatedPicks(const tsvParser &p, xmlParser &parser, double epsilon, bool filterHCD) {
@@ -163,13 +42,14 @@ void SpectrumAnalyzer::printAnnotatedPicks(const tsvParser &p, xmlParser &parser
         TheorySpectra ts = generateMasses(sequence);
         for (auto &spectra: elem.second) {
             if (spectra.aType == CID || !filterHCD)
-                showAnnotatedPicks(os, ts, spectra, parser, epsilon);
+                calculateAnnotatedPicks(spectra, ts, parser, epsilon, os, true);
         }
     }
     os.close();
 }
 
-void SpectrumAnalyzer::printNeutralAndPlusHDifference(const tsvParser &p, xmlParser &parser, const massTable &t) {
+void SpectrumAnalyzer::printNeutralAndPlusHDifference(const tsvParser &p, xmlParser &parser, const massTable &t,
+                                                      double epsilon) {
     ofstream os("difference.txt");
     vector<pair<double, MSResult>> differences;
     for (auto &elem: p.results) {
@@ -177,14 +57,13 @@ void SpectrumAnalyzer::printNeutralAndPlusHDifference(const tsvParser &p, xmlPar
         TheorySpectra tsNeutral = generateMasses(sequence);
         TheorySpectra tsPlusH = generateMasses(sequence, t.HMass);
         for (auto &spectra: elem.second) {
-            double coveredNeutral = calculateAnnotatedPicks(spectra, elem.second, tsNeutral, parser);
-            double coveredPlusH = calculateAnnotatedPicks(spectra, elem.second, tsPlusH, parser);
+            double coveredNeutral = calculateAnnotatedPicks(spectra, tsNeutral, parser, epsilon, os);
+            double coveredPlusH = calculateAnnotatedPicks(spectra, tsPlusH, parser, epsilon, os);
             differences.emplace_back(abs(coveredNeutral - coveredPlusH), spectra);
         }
     }
     sort(differences.begin(), differences.end(),
          [](pair<double, MSResult> x, pair<double, MSResult> y) { return x.first < y.first; });
-    double epsilon = 0.02;
     for (int i = 1; i <= 3; i++) {
         MSResult spectra = differences[differences.size() - i].second;
         string sequence = spectra.sequence;
@@ -202,67 +81,133 @@ void SpectrumAnalyzer::printNeutralAndPlusHDifference(const tsvParser &p, xmlPar
 
 
 double
-SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, const std::vector<MSResult> &elem, TheorySpectra &ts,
-                                          xmlParser &parser) {
-    double epsilon = 0.02;
+SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra &ts,
+                                          xmlParser &parser, double epsilon, ostream &os, bool printData) {
+    if (printData)
+        os << "\n" << spectra.scanId << "\t" << spectra.eValue << "\t" << (spectra.aType == HCD ? "HCD" : "CID");
+
     int covered = 0;
     map<string, bool> isCovered;
+    int annotatedCnt = 0;
+    averageRelError = 0, averageAbsError = 0, maxRelError = 0, maxAbsError = 0, minRelError = 1, minAbsError = 1;
+
     for (auto &prefix:ts.prefixes) {
         string name = prefix.first;
         for (auto &mass: parser.spectras[spectra.scanId].massesAndIntensities) {
             if (abs(mass.first - prefix.second) <= epsilon) {
+                annotatedCnt++;
                 if (!isCovered[prefix.first]) {
                     covered++;
                     isCovered[prefix.first] = true;
                     isCovered[ts.linkedPairs[prefix.first]] = true;
+                }
+                pair<double, double> errors = recalculateError(prefix.second, mass.first);
+                if (printData) {
+                    os << "\n" << mass.first << "\t" << mass.second << "\t" << name
+                       << "\tprefix\t\tabsolute mass error: "
+                       << errors.first <<
+                       "\trelative mass error: " << errors.second << "%\tExact mass error: "
+                       <<(double)(mass.first - prefix.second);
                 }
             }
 
             if (abs(mass.first - prefix.second + MASS_TABLE.waterMass) <= epsilon) {
+                annotatedCnt++;
                 if (!isCovered[prefix.first]) {
                     covered++;
                     isCovered[prefix.first] = true;
                     isCovered[ts.linkedPairs[prefix.first]] = true;
                 }
+                pair<double, double> errors = recalculateError(prefix.second - MASS_TABLE.waterMass, mass.first);
+                if (printData) {
+                    os << "\n" << mass.first << "\t" << mass.second << "\t" << name
+                       << "\tprefix\twater loss\tabsolute mass error: " << errors.first <<
+                       "\trelative mass error: " << errors.second << "%\tExact mass error: "
+                       << (double)(mass.first - prefix.second + MASS_TABLE.waterMass);
+                }
             }
 
             if (abs(mass.first - prefix.second + MASS_TABLE.ammoniaMass) <= epsilon) {
+                annotatedCnt++;
                 if (!isCovered[prefix.first]) {
                     covered++;
                     isCovered[prefix.first] = true;
                     isCovered[ts.linkedPairs[prefix.first]] = true;
+                }
+                pair<double, double> errors = recalculateError(prefix.second - MASS_TABLE.ammoniaMass, mass.first);
+                if (printData) {
+                    os << "\n" << mass.first << "\t" << mass.second << "\t" << name
+                       << "\tprefix\tammonia loss\tabsolute mass error: " << errors.first <<
+                       "\trelative mass error: " << errors.second << "%\tExact mass error: "
+                       << (double)(mass.first - prefix.second + MASS_TABLE.ammoniaMass);
                 }
             }
 
         }
     }
-    for (auto &suffix:ts.suffixes) {
-        string name = suffix.first;
+    for (auto &prefix:ts.suffixes) {
+        string name = prefix.first;
         for (auto &mass: parser.spectras[spectra.scanId].massesAndIntensities) {
-            if (abs(mass.first - suffix.second) <= epsilon) {
-                if (!isCovered[suffix.first]) {
+            if (abs(mass.first - prefix.second) <= epsilon) {
+                annotatedCnt++;
+                if (!isCovered[prefix.first]) {
                     covered++;
-                    isCovered[suffix.first] = true;
-                    isCovered[ts.linkedPairs[suffix.first]] = true;
+                    isCovered[prefix.first] = true;
+                    isCovered[ts.linkedPairs[prefix.first]] = true;
+                }
+                pair<double, double> errors = recalculateError(prefix.second, mass.first);
+                if (printData) {
+                    os << "\n" << mass.first << "\t" << mass.second << "\t" << name
+                       << "\tsuffix\t\tabsolute mass error: "
+                       << errors.first <<
+                       "\trelative mass error: " << errors.second << "%\tExact mass error: "
+                       << (double) (mass.first - prefix.second);
                 }
             }
 
-            if (abs(mass.first - suffix.second + MASS_TABLE.waterMass) <= epsilon) {
-                if (!isCovered[suffix.first]) {
+            if (abs(mass.first - prefix.second + MASS_TABLE.waterMass) <= epsilon) {
+                annotatedCnt++;
+                if (!isCovered[prefix.first]) {
                     covered++;
-                    isCovered[suffix.first] = true;
-                    isCovered[ts.linkedPairs[suffix.first]] = true;
+                    isCovered[prefix.first] = true;
+                    isCovered[ts.linkedPairs[prefix.first]] = true;
+                }
+                pair<double, double> errors = recalculateError(prefix.second - MASS_TABLE.waterMass, mass.first);
+                if (printData) {
+                    os << "\n" << mass.first << "\t" << mass.second << "\t" << name
+                       << "\tsuffix\twater loss\tabsolute mass error: " << errors.first <<
+                       "\trelative mass error: " << errors.second << "%\tExact mass error: "
+                       << (double) (mass.first - prefix.second + MASS_TABLE.waterMass);
                 }
             }
 
-            if (abs(mass.first - suffix.second + MASS_TABLE.ammoniaMass) <= epsilon) {
-                if (!isCovered[suffix.first]) {
+            if (abs(mass.first - prefix.second + MASS_TABLE.ammoniaMass) <= epsilon) {
+                annotatedCnt++;
+                if (!isCovered[prefix.first]) {
                     covered++;
-                    isCovered[suffix.first] = true;
-                    isCovered[ts.linkedPairs[suffix.first]] = true;
+                    isCovered[prefix.first] = true;
+                    isCovered[ts.linkedPairs[prefix.first]] = true;
+                }
+                pair<double, double> errors = recalculateError(prefix.second - MASS_TABLE.ammoniaMass, mass.first);
+                if (printData) {
+                    os << "\n" << mass.first << "\t" << mass.second << "\t" << name
+                       << "\tsuffix\tammonia loss\tabsolute mass error: " << errors.first <<
+                       "\trelative mass error: " << errors.second << "%\tExact mass error: "
+                       << (double)(mass.first - prefix.second + MASS_TABLE.ammoniaMass);
                 }
             }
         }
+    }
+    if (annotatedCnt) {
+        averageAbsError /= annotatedCnt;
+        averageRelError /= annotatedCnt;
+    }
+    if (printData) {
+        os << "\n covered " << (double) covered / (ts.sequenceLength - 1) * 100
+           << "% of peptide links\ntotal mass: " << ts.globalMass << "\naverage absolute error: " << averageAbsError
+           << "\taverage relative error: " << averageRelError << "%\nmax absolute error: " << maxAbsError
+           << "\t min absolute error: " << minAbsError <<
+           "\nmax relative error: " << maxRelError << "%\t min relative error: " << minRelError << "%\n\n";
     }
     return (double) covered / (ts.sequenceLength - 1) * 100;
 }
