@@ -13,6 +13,7 @@ pair<double, double> calculateError(double theoryMass, double mass) {
 
 
 const massTable SpectrumAnalyzer::MASS_TABLE = massTable();
+vector<pair<double,int>> SpectrumAnalyzer::massErrors = vector<pair<double,int>>();
 double SpectrumAnalyzer::averageRelError = 0, SpectrumAnalyzer::averageAbsError = 0,
         SpectrumAnalyzer::maxRelError = 0, SpectrumAnalyzer::maxAbsError = 0,
         SpectrumAnalyzer::minRelError = 1, SpectrumAnalyzer::minAbsError = 1;
@@ -29,6 +30,21 @@ pair<double, double> SpectrumAnalyzer::recalculateError(double theoryMass, doubl
 }
 
 
+void SpectrumAnalyzer::recalculateMassErrors(double curError) {
+    double massEpsilon = 0.005;
+    bool isNew = true;
+    for (auto &error: massErrors) {
+        if (abs(error.first - curError) <= massEpsilon) {
+            error.second++;
+            isNew = false;
+            break;
+        }
+    }
+    if (isNew) {
+        massErrors.emplace_back(curError, 1);
+    }
+}
+
 void
 SpectrumAnalyzer::showAnnotatedPicks(std::ofstream &os, TheorySpectra &ts, const MSResult &spectra, xmlParser &parser,
                                      double epsilon) {
@@ -44,6 +60,11 @@ void SpectrumAnalyzer::printAnnotatedPicks(const tsvParser &p, xmlParser &parser
             if (spectra.aType == CID || !filterHCD)
                 calculateAnnotatedPicks(spectra, ts, parser, epsilon, os, true);
         }
+    }
+    sort(massErrors.begin(), massErrors.end());
+    os << "Exact mass errors:\n";
+    for (auto &error:massErrors) {
+        os << "Error: " << error.first << "\t Times occurred: " << error.second << "\n";
     }
     os.close();
 }
@@ -90,7 +111,6 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
     map<string, bool> isCovered;
     int annotatedCnt = 0;
     averageRelError = 0, averageAbsError = 0, maxRelError = 0, maxAbsError = 0, minRelError = 1, minAbsError = 1;
-
     for (auto &prefix:ts.prefixes) {
         string name = prefix.first;
         for (auto &mass: parser.spectras[spectra.scanId].massesAndIntensities) {
@@ -101,13 +121,15 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
                     isCovered[prefix.first] = true;
                     isCovered[ts.linkedPairs[prefix.first]] = true;
                 }
+                auto curError = (double) (mass.first - prefix.second);
+                recalculateMassErrors(curError);
                 pair<double, double> errors = recalculateError(prefix.second, mass.first);
                 if (printData) {
                     os << "\n" << mass.first << "\t" << mass.second << "\t" << name
                        << "\tprefix\t\tabsolute mass error: "
                        << errors.first <<
                        "\trelative mass error: " << errors.second << "%\tExact mass error: "
-                       <<(double)(mass.first - prefix.second);
+                       << curError;
                 }
             }
 
@@ -118,12 +140,13 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
                     isCovered[prefix.first] = true;
                     isCovered[ts.linkedPairs[prefix.first]] = true;
                 }
+                recalculateMassErrors((mass.first - prefix.second + MASS_TABLE.waterMass));
                 pair<double, double> errors = recalculateError(prefix.second - MASS_TABLE.waterMass, mass.first);
                 if (printData) {
                     os << "\n" << mass.first << "\t" << mass.second << "\t" << name
                        << "\tprefix\twater loss\tabsolute mass error: " << errors.first <<
                        "\trelative mass error: " << errors.second << "%\tExact mass error: "
-                       << (double)(mass.first - prefix.second + MASS_TABLE.waterMass);
+                       << (double) (mass.first - prefix.second + MASS_TABLE.waterMass);
                 }
             }
 
@@ -134,12 +157,14 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
                     isCovered[prefix.first] = true;
                     isCovered[ts.linkedPairs[prefix.first]] = true;
                 }
+                auto curError = (double) (mass.first - prefix.second + MASS_TABLE.ammoniaMass);
+                recalculateMassErrors(curError);
                 pair<double, double> errors = recalculateError(prefix.second - MASS_TABLE.ammoniaMass, mass.first);
                 if (printData) {
                     os << "\n" << mass.first << "\t" << mass.second << "\t" << name
                        << "\tprefix\tammonia loss\tabsolute mass error: " << errors.first <<
                        "\trelative mass error: " << errors.second << "%\tExact mass error: "
-                       << (double)(mass.first - prefix.second + MASS_TABLE.ammoniaMass);
+                       << curError;
                 }
             }
 
@@ -155,6 +180,8 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
                     isCovered[prefix.first] = true;
                     isCovered[ts.linkedPairs[prefix.first]] = true;
                 }
+                auto curError = (double) (mass.first - prefix.second);
+                recalculateMassErrors(curError);
                 pair<double, double> errors = recalculateError(prefix.second, mass.first);
                 if (printData) {
                     os << "\n" << mass.first << "\t" << mass.second << "\t" << name
@@ -172,12 +199,14 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
                     isCovered[prefix.first] = true;
                     isCovered[ts.linkedPairs[prefix.first]] = true;
                 }
+                auto curError = (double) (mass.first - prefix.second + MASS_TABLE.waterMass);
+                recalculateMassErrors(curError);
                 pair<double, double> errors = recalculateError(prefix.second - MASS_TABLE.waterMass, mass.first);
                 if (printData) {
                     os << "\n" << mass.first << "\t" << mass.second << "\t" << name
                        << "\tsuffix\twater loss\tabsolute mass error: " << errors.first <<
                        "\trelative mass error: " << errors.second << "%\tExact mass error: "
-                       << (double) (mass.first - prefix.second + MASS_TABLE.waterMass);
+                       << curError;
                 }
             }
 
@@ -188,12 +217,14 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
                     isCovered[prefix.first] = true;
                     isCovered[ts.linkedPairs[prefix.first]] = true;
                 }
+                auto curError = (double) (mass.first - prefix.second + MASS_TABLE.ammoniaMass);
+                recalculateMassErrors(curError);
                 pair<double, double> errors = recalculateError(prefix.second - MASS_TABLE.ammoniaMass, mass.first);
                 if (printData) {
                     os << "\n" << mass.first << "\t" << mass.second << "\t" << name
                        << "\tsuffix\tammonia loss\tabsolute mass error: " << errors.first <<
                        "\trelative mass error: " << errors.second << "%\tExact mass error: "
-                       << (double)(mass.first - prefix.second + MASS_TABLE.ammoniaMass);
+                       << (double) (mass.first - prefix.second + MASS_TABLE.ammoniaMass);
                 }
             }
         }

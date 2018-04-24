@@ -16,9 +16,12 @@ public:
 
 private:
     static const massTable MASS_TABLE;
+    static std::vector<std::pair<double,int>> massErrors;
     static double averageRelError, averageAbsError, maxRelError, maxAbsError, minRelError, minAbsError;
 
     static std::pair<double, double> recalculateError(double theoryMass, double mass);
+
+    static void recalculateMassErrors(double curError);
 
     static double calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra &ts,
                                           xmlParser &parser, double epsilon, std::ostream &os, bool printData = false);
