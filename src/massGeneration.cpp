@@ -43,3 +43,14 @@ TheorySpectra generateMasses(const string &peptide, double additionalMass) {
     }
     return TheorySpectra(sequenceLength, peptide, prefixes, suffixes, linkedPairs, globalMass);
 }
+
+double calculatePeptideMass(std::string peptide) {
+    massTable table;
+    double mass = 0;
+    for (char i : peptide) {
+        if (i == 'C')
+            mass += 57.021;
+        mass += table[i];
+    }
+    return mass;
+}

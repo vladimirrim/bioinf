@@ -15,7 +15,7 @@ int main() {
     parser.parseXML("120706O2c1_LZ-MvD-0297-MabCampth-trypsin_007_msdeconv.msalign");
     tsvParser p;
     p.parseTSV("../120706O2c1_LZ-MvD-0297-MabCampth-trypsin_007.tsv");
-    double epsilon = 0.1;
+    double epsilon = 0.3;
     SpectrumAnalyzer::printAnnotatedPicks(p, parser, epsilon, true);
     return 0;
 }

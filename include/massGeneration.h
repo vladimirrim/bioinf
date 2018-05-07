@@ -55,4 +55,6 @@ struct TheorySpectra {
             linkedPairs(std::move(linkedPairs)), sequenceLength(sequenceLength), globalMass(globalMass) {};
 };
 
+double calculatePeptideMass(std::string peptide);
+
 TheorySpectra generateMasses(const std::string &peptide, double additionalMass = 0);
