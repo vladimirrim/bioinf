@@ -8,7 +8,7 @@ using namespace std;
 
 pair<double, double> calculateError(double theoryMass, double mass) {
     double absError = abs(mass - theoryMass);
-    double relError = absError / theoryMass * 100;
+    double relError = absError / theoryMass * 1e6;
     return {absError, relError};
 }
 
@@ -147,7 +147,7 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
                     os << "\n" << mass.first << "\t" << mass.second << "\t" << name
                        << "\tprefix\t\tabsolute mass error: "
                        << errors.first <<
-                       "\trelative mass error: " << errors.second << "%\tExact mass error: "
+                       "\trelative mass error: " << errors.second << "ppm\tExact mass error: "
                        << curError;
                 }
             }
@@ -166,7 +166,7 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
                 if (printData) {
                     os << "\n" << mass.first << "\t" << mass.second << "\t" << name
                        << "\tprefix\twater loss\tabsolute mass error: " << errors.first <<
-                       "\trelative mass error: " << errors.second << "%\tExact mass error: "
+                       "\trelative mass error: " << errors.second << "ppm\tExact mass error: "
                        << (double) (mass.first - prefix.second + MASS_TABLE.waterMass);
                 }
             }
@@ -185,7 +185,7 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
                 if (printData) {
                     os << "\n" << mass.first << "\t" << mass.second << "\t" << name
                        << "\tprefix\tammonia loss\tabsolute mass error: " << errors.first <<
-                       "\trelative mass error: " << errors.second << "%\tExact mass error: "
+                       "\trelative mass error: " << errors.second << "ppm\tExact mass error: "
                        << curError;
                 }
             }
@@ -210,7 +210,7 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
                     os << "\n" << mass.first << "\t" << mass.second << "\t" << name
                        << "\tsuffix\t\tabsolute mass error: "
                        << errors.first <<
-                       "\trelative mass error: " << errors.second << "%\tExact mass error: "
+                       "\trelative mass error: " << errors.second << "ppm\tExact mass error: "
                        << (double) (mass.first - suffix.second);
                 }
             }
@@ -229,7 +229,7 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
                 if (printData) {
                     os << "\n" << mass.first << "\t" << mass.second << "\t" << name
                        << "\tsuffix\twater loss\tabsolute mass error: " << errors.first <<
-                       "\trelative mass error: " << errors.second << "%\tExact mass error: "
+                       "\trelative mass error: " << errors.second << "ppm\tExact mass error: "
                        << curError;
                 }
             }
@@ -248,7 +248,7 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
                 if (printData) {
                     os << "\n" << mass.first << "\t" << mass.second << "\t" << name
                        << "\tsuffix\tammonia loss\tabsolute mass error: " << errors.first <<
-                       "\trelative mass error: " << errors.second << "%\tExact mass error: "
+                       "\trelative mass error: " << errors.second << "ppm\tExact mass error: "
                        << (double) (mass.first - suffix.second + MASS_TABLE.ammoniaMass);
                 }
             }
@@ -279,11 +279,11 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
     if (printData) {
         os << "\n covered " << (double) covered / (ts.sequenceLength - 1) * 100
            << "% of peptide links\ntotal mass: " << ts.globalMass << "\naverage absolute error: " << averageAbsError
-           << "\taverage relative error: " << averageRelError << "%\nmax absolute error: " << maxAbsError
+           << "\taverage relative error: " << averageRelError << "ppm\nmax absolute error: " << maxAbsError
            << "\t min absolute error: " << minAbsError <<
-           "\nmax relative error: " << maxRelError << "%\t min relative error: " << minRelError << "%\n";
+           "\nmax relative error: " << maxRelError << "ppm\t min relative error: " << minRelError << "ppm\n";
 
-        os << "Mass differences:\n";
+        os << "\nMass differences:\n";
         os << "Prefixes:\n";
         for (auto &difference:prefDifferences) {
             os << "Difference: " << difference.first << "\t Times occurred: " << difference.second << "\n";
