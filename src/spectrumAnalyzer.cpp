@@ -1,10 +1,13 @@
 #include <fstream>
 #include <algorithm>
 #include <utility>
+#include <opencv/highgui.h>
+#include <opencv2/imgproc.hpp>
+#include <opencv/cv.hpp>
 #include "../include/spectrumAnalyzer.h"
 
 using namespace std;
-
+using namespace cv;
 
 pair<double, double> calculateError(double theoryMass, double mass) {
     double absError = abs(mass - theoryMass);
@@ -16,9 +19,10 @@ pair<double, double> calculateError(double theoryMass, double mass) {
 const massTable SpectrumAnalyzer::MASS_TABLE = massTable();
 vector<pair<double, int>> SpectrumAnalyzer::massErrors = vector<pair<double, int>>();
 vector<pair<double, int>> SpectrumAnalyzer::massDifferences = vector<pair<double, int>>();
+ActivationType SpectrumAnalyzer::filter = HCD;
 double SpectrumAnalyzer::averageRelError = 0, SpectrumAnalyzer::averageAbsError = 0,
         SpectrumAnalyzer::maxRelError = 0, SpectrumAnalyzer::maxAbsError = 0,
-        SpectrumAnalyzer::minRelError = 1, SpectrumAnalyzer::minAbsError = 1;
+        SpectrumAnalyzer::minRelError = 1e8, SpectrumAnalyzer::minAbsError = 1;
 
 pair<double, double> SpectrumAnalyzer::recalculateError(double theoryMass, double mass) {
     pair<double, double> errors = calculateError(theoryMass, mass);
@@ -32,38 +36,101 @@ pair<double, double> SpectrumAnalyzer::recalculateError(double theoryMass, doubl
 }
 
 
-void addToBin(vector<pair<double, int>> &bins, double newValue, double epsilon) {
-    bool isNew = true;
-    for (auto &error: bins) {
-        if (abs(error.first - newValue) <= epsilon) {
-            error.second++;
-            isNew = false;
+void addToBin(vector<pair<double, int>> &bins, double newValue) {
+    for (int i = 0; i < bins.size() - 1; i++) {
+        if (newValue > bins[i].first && newValue < bins[i + 1].first) {
+            bins[i].second++;
             break;
         }
     }
-    if (isNew) {
-        bins.emplace_back(newValue, 1);
-    }
 }
 
-void SpectrumAnalyzer::recalculateMassErrors(double curError, double massEpsilon) {
-    addToBin(massErrors, curError, massEpsilon);
+void SpectrumAnalyzer::recalculateMassErrors(double curError) {
+    addToBin(massErrors, curError);
 }
 
-void SpectrumAnalyzer::recalculateMassDifferences(double curDifference, double massEpsilon,
+void SpectrumAnalyzer::recalculateMassDifferences(double curDifference,
                                                   vector<pair<double, int>> &results) {
-    addToBin(massDifferences, curDifference, massEpsilon);
-    addToBin(results, curDifference, massEpsilon);
+    addToBin(massDifferences, curDifference);
+
+    addToBin(results, curDifference);
 }
 
-void SpectrumAnalyzer::printAnnotatedPicks(const tsvParser &p, xmlParser &parser, double epsilon, bool filterHCD) {
+void drawHCDHistogram(string filename, const vector<pair<double, int>> &massDifferences) {
+    int hist_w = 1400;
+    int hist_h = 670;
+    int bin_w = cvRound((double) (hist_w - 30) / massDifferences.size());
+    Mat histImage(hist_h, hist_w, CV_8UC3, Scalar(0, 0, 0));
+    int XScale = -40;
+    for (int i = 0; i < massDifferences.size(); i++) {
+        rectangle(histImage, Point(bin_w * i + 35, hist_h - 30),
+                  Point(bin_w * i + bin_w + 25, hist_h - 30 - massDifferences[i].second),
+                  Scalar(130, 221, 238), -1);
+        putText(histImage, (string) (XScale < 0 ? "-" : "") + "0.0" +
+                           (abs(XScale) % 10 == 0 ? to_string(abs(XScale) / 10) : "0" + to_string(abs(XScale))),
+                Point(bin_w * i + (XScale < 0 ? 15 : 20), hist_h - 10), FONT_HERSHEY_PLAIN,
+                0.8, Scalar(255, 255, 255));
+        XScale += 4;
+    }
+    int YScale = 0;
+    for (int i = 0; i < 21; i++) {
+        putText(histImage, to_string(YScale), Point(10, hist_h - YScale - 30), FONT_HERSHEY_PLAIN, 0.8,
+                Scalar(255, 255, 255));
+        YScale += (hist_h - 30) / 20;
+    }
+    imwrite(filename, histImage);
+}
+
+void drawCIDHistogram(string filename, const vector<pair<double, int>> &massDifferences) {
+    int hist_w = 1200;
+    int hist_h = 740;
+    int bin_w = cvRound((double) (hist_w - 30) / massDifferences.size());
+    Mat histImage(hist_h, hist_w, CV_8UC3, Scalar(0, 0, 0));
+    int XScale = -60;
+    for (int i = 0; i < massDifferences.size(); i++) {
+        rectangle(histImage, Point(bin_w * i + 35, hist_h - 30),
+                  Point(bin_w * i + bin_w + 25, hist_h - 30 - 15 * massDifferences[i].second),
+                  Scalar(130, 221, 238), -1);
+        putText(histImage, (string) (XScale < 0 ? "-" : "") + "0." + (abs(XScale) == 6 ? "0" : "") +
+                           (abs(XScale) % 10 == 0 ? to_string(abs(XScale) / 10) : to_string(abs(XScale))),
+                Point(bin_w * i + (XScale < 0 ? 15 : 20), hist_h - 10), FONT_HERSHEY_PLAIN,
+                0.8, Scalar(255, 255, 255));
+        XScale += 6;
+    }
+    int YScale = 0;
+    for (int i = 0; i < 24; i++) {
+        putText(histImage, to_string(YScale), Point(10, hist_h - 15 * YScale - 30), FONT_HERSHEY_PLAIN, 0.8,
+                Scalar(255, 255, 255));
+        YScale += (hist_h - 30) / 345;
+    }
+    imwrite(filename, histImage);
+}
+
+void
+SpectrumAnalyzer::printAnnotatedPicks(const tsvParser &p, xmlParser &parser, double epsilon, ActivationType filter) {
     ofstream os("results.txt");
+    SpectrumAnalyzer::filter = filter;
+    if (filter == HCD) {
+        double start = -0.04;
+        for (int i = 0; i <= 20; i++) {
+            massErrors.emplace_back(start, 0);
+            massDifferences.emplace_back(start, 0);
+            start += 0.004;
+        }
+    } else {
+        double start = -0.6;
+        for (int i = 0; i <= 20; i++) {
+            massErrors.emplace_back(start, 0);
+            massDifferences.emplace_back(start, 0);
+            start += 0.06;
+        }
+    }
     for (auto &elem: p.results) {
         string sequence = elem.first;
         os << sequence << "\n";
         TheorySpectra ts = generateMasses(sequence);
         for (auto &spectra: elem.second) {
-            if (spectra.aType == CID || !filterHCD)
+            if (spectra.aType == filter)
                 calculateAnnotatedPicks(spectra, ts, parser, epsilon, os, true);
         }
     }
@@ -74,11 +141,15 @@ void SpectrumAnalyzer::printAnnotatedPicks(const tsvParser &p, xmlParser &parser
     }
 
     sort(massDifferences.begin(), massDifferences.end());
-    os << "Mass differences:\n";
+    os << "\nMass differences:\n";
     for (auto &difference:massDifferences) {
         os << "Error: " << difference.first << "\t Times occurred: " << difference.second << "\n";
     }
     os.close();
+    if (filter == HCD)
+        drawHCDHistogram("HCD.png", massDifferences);
+    else
+        drawCIDHistogram("CID.png", massDifferences);
 }
 
 void SpectrumAnalyzer::printNeutralAndPlusHDifference(const tsvParser &p, xmlParser &parser, const massTable &t,
@@ -119,7 +190,7 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
     if (printData)
         os << "\n" << spectra.scanId << "\t" << spectra.eValue << "\t" << (spectra.aType == HCD ? "HCD" : "CID");
 
-    double massEpsilon = 0.05;
+    double massEpsilon = 0.001;
     int covered = 0;
     map<string, bool> isCovered;
     map<string, double> annotatedPrefixes;
@@ -127,8 +198,23 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
     map<string, double, decltype(comp)> annotatedSuffixes(comp);
     vector<pair<double, int>> prefDifferences;
     vector<pair<double, int>> sufDifferences;
+    if (filter == HCD) {
+        double start = -0.1;
+        for (int i = 0; i <= 20; i++) {
+            prefDifferences.emplace_back(start, 0);
+            sufDifferences.emplace_back(start, 0);
+            start += 0.01;
+        }
+    } else {
+        double start = -1;
+        for (int i = 0; i <= 20; i++) {
+            prefDifferences.emplace_back(start, 0);
+            sufDifferences.emplace_back(start, 0);
+            start += 0.1;
+        }
+    }
     int annotatedCnt = 0;
-    averageRelError = 0, averageAbsError = 0, maxRelError = 0, maxAbsError = 0, minRelError = 1, minAbsError = 1;
+    averageRelError = 0, averageAbsError = 0, maxRelError = 0, maxAbsError = 0, minRelError = 1e8, minAbsError = 1;
     for (auto &prefix:ts.prefixes) {
         string name = prefix.first;
         for (auto &mass: parser.spectras[spectra.scanId].massesAndIntensities) {
@@ -140,7 +226,7 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
                     isCovered[ts.linkedPairs[prefix.first]] = true;
                 }
                 auto curError = (double) (mass.first - prefix.second);
-                recalculateMassErrors(curError, massEpsilon);
+                recalculateMassErrors(curError);
                 annotatedPrefixes[prefix.first] = mass.first;
                 pair<double, double> errors = recalculateError(prefix.second, mass.first);
                 if (printData) {
@@ -160,7 +246,7 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
                     isCovered[ts.linkedPairs[prefix.first]] = true;
                 }
                 auto curError = (double) (mass.first - prefix.second + MASS_TABLE.waterMass);
-                recalculateMassErrors(curError, massEpsilon);
+                recalculateMassErrors(curError);
                 annotatedPrefixes[prefix.first] = mass.first + MASS_TABLE.waterMass;
                 pair<double, double> errors = recalculateError(prefix.second - MASS_TABLE.waterMass, mass.first);
                 if (printData) {
@@ -179,7 +265,7 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
                     isCovered[ts.linkedPairs[prefix.first]] = true;
                 }
                 auto curError = (double) (mass.first - prefix.second + MASS_TABLE.ammoniaMass);
-                recalculateMassErrors(curError, massEpsilon);
+                recalculateMassErrors(curError);
                 annotatedPrefixes[prefix.first] = mass.first + MASS_TABLE.ammoniaMass;
                 pair<double, double> errors = recalculateError(prefix.second - MASS_TABLE.ammoniaMass, mass.first);
                 if (printData) {
@@ -203,7 +289,7 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
                     isCovered[ts.linkedPairs[suffix.first]] = true;
                 }
                 auto curError = (double) (mass.first - suffix.second);
-                recalculateMassErrors(curError, massEpsilon);
+                recalculateMassErrors(curError);
                 annotatedSuffixes[suffix.first] = mass.first;
                 pair<double, double> errors = recalculateError(suffix.second, mass.first);
                 if (printData) {
@@ -223,7 +309,7 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
                     isCovered[ts.linkedPairs[suffix.first]] = true;
                 }
                 auto curError = (double) (mass.first - suffix.second + MASS_TABLE.waterMass);
-                recalculateMassErrors(curError, massEpsilon);
+                recalculateMassErrors(curError);
                 annotatedSuffixes[suffix.first] = mass.first + MASS_TABLE.waterMass;
                 pair<double, double> errors = recalculateError(suffix.second - MASS_TABLE.waterMass, mass.first);
                 if (printData) {
@@ -242,7 +328,7 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
                     isCovered[ts.linkedPairs[suffix.first]] = true;
                 }
                 auto curError = (double) (mass.first - suffix.second + MASS_TABLE.ammoniaMass);
-                recalculateMassErrors(curError, massEpsilon);
+                recalculateMassErrors(curError);
                 annotatedSuffixes[suffix.first] = mass.first + MASS_TABLE.ammoniaMass;
                 pair<double, double> errors = recalculateError(suffix.second - MASS_TABLE.ammoniaMass, mass.first);
                 if (printData) {
@@ -263,7 +349,7 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
         if (prevPick.first != "1" && prefix.first.length() - prevPick.first.length() <= 3) {
             double theoryDifference = calculatePeptideMass(prefix.first) - calculatePeptideMass(prevPick.first);
             double actualDifference = prefix.second - prevPick.second;
-            recalculateMassDifferences(theoryDifference - actualDifference, 0.05, prefDifferences);
+            recalculateMassDifferences(theoryDifference - actualDifference, prefDifferences);
         }
         prevPick = prefix;
     }
@@ -272,10 +358,11 @@ SpectrumAnalyzer::calculateAnnotatedPicks(const MSResult &spectra, TheorySpectra
         if (prevPick.first != "1" && suffix.first.length() - prevPick.first.length() <= 3) {
             double theoryDifference = calculatePeptideMass(suffix.first) - calculatePeptideMass(prevPick.first);
             double actualDifference = suffix.second - prevPick.second;
-            recalculateMassDifferences(theoryDifference - actualDifference, 0.05, sufDifferences);
+            recalculateMassDifferences(theoryDifference - actualDifference, sufDifferences);
         }
         prevPick = suffix;
     }
+
     if (printData) {
         os << "\n covered " << (double) covered / (ts.sequenceLength - 1) * 100
            << "% of peptide links\ntotal mass: " << ts.globalMass << "\naverage absolute error: " << averageAbsError

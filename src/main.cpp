@@ -6,9 +6,11 @@
 #include "../include/spectrumAnalyzer.h"
 #include <cmath>
 #include <algorithm>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 
 using namespace std;
-
+using namespace cv;
 
 int main() {
     xmlParser parser;
@@ -16,6 +18,6 @@ int main() {
     tsvParser p;
     p.parseTSV("../120706O2c1_LZ-MvD-0297-MabCampth-trypsin_007.tsv");
     double epsilon = 0.3;
-    SpectrumAnalyzer::printAnnotatedPicks(p, parser, epsilon, true);
+    SpectrumAnalyzer::printAnnotatedPicks(p, parser, epsilon, HCD);
     return 0;
 }
